@@ -9,10 +9,16 @@ import os
 import mytools #used to get passwd from personal mysql
 
 class RenrenBrowser:
-	pwdRoot='/home/jackon/renrensite'
-	pwdFriendPage=pwdRoot+'/friendPages'
+	pwdRoot='/home/jackon/renrenData'
 	pwdProfilePage=pwdRoot+'/profilePages'
-	pwdLog=pwdRoot+'/log'
+	pwdLog=pwdRoot+'/spider_log'
+	urlTmplt={
+		'status':'http://status.renren.com/status?curpage={}&id={}&__view=async-html',
+		'friendList':"http://friend.renren.com/GetFriendList.do?curpage={}&id={}"}
+	itemPtn={
+		'status':'id="status-',
+		'friendList':'class="info"'}
+	filenameTmplt='{}{}_{}.html'#pageStyle, renrenId, page
 	def __init__(self,user='jiekunyang@gmail.com'):
 
 		self.log=self.initLogger()
@@ -20,41 +26,10 @@ class RenrenBrowser:
 		self.user=user
 		self.passwd=mytools.getPasswd('renren',user)
 
-	def friendPage(self,renrenId='285060168',uppage=100):
-		pwd=self.pwdFriendPage+'/{}'.format(renrenId)
-
-		#only useful page is writtern, no end+1 page, no permision denied page
-		self.log.info("start to get friendPage of {}".format(renrenId))
-		#init pwd to write
-		if os.path.exists(pwd)==False:
-			os.makedirs(pwd)	
-			self.log.debug("mkdir {}".format(pwd))
-
-		#request pages which not existe locally
-		urlTemplate="http://friend.renren.com/GetFriendList.do?curpage={}&id={}"
-		filenameTemplate='friendPage_{}_{}.html'#id,page
-		for page in range(len(os.listdir(pwd)),uppage+1):
-			if(page==51):
-				self.log.info('processing friendPage, getting page{} of {}'.format(page,renrenId))
-			#send request and decode response
-			self.log.debug("requesting friendPage, page={}, renrenId={}".format(page,renrenId))
-			rsp=self.opener.open(urlTemplate.format(page,renrenId))
-			self.log.debug("friendPage recieved , page={}, renrenId={}".format(page,renrenId))
-			htmlStr=rsp.read().decode('UTF-8','ignore')
-
-			urlPtn=r'<a\shref=\"http://www.renren.com/profile.do\?id=\d+\">'
-			profileUrls=set(re.compile(urlPtn).findall(htmlStr))
-			if len(profileUrls) < 2:
-				#end of friend list page or permision denied
-				self.log.debug("all friendPage of {} saved in {}".format(renrenId,pwd))
-				break
-			else:
-				#write to file
-				filename=pwd+'/'+filenameTemplate.format(renrenId,page)
-				f=open(filename,'w')
-				f.write(htmlStr)
-				f.close()
-				self.log.debug("friendPage writtern to file,filename={}".format(filename))
+	def friendListPage(self,renrenId='285060168',uppage=100):
+		self.iterPage('friendList',renrenId,uppage)
+	def statusPage(self,renrenId=None,uppage=100):
+		self.iterPage('status',renrenId,uppage)
 	def profilePage(self,renrenId):
 		url_template="http://www.renren.com/{}/profile?v=info_ajax"
 		#sending request and decode response
@@ -74,6 +49,38 @@ class RenrenBrowser:
 		f.write(htmlStr)
 		f.close()
 		self.log.debug("detail profile write to file, file={}".format(filename))
+
+	def iterPage(self,pageStyle=None,renrenId=None,uppage=100):
+		pwd=self.pwdRoot+'/{}/{}'.format(pageStyle,renrenId)
+
+		#only useful page is writtern, no end+1 page, no permision denied page
+		self.log.info("start to get {} page of {}".format(pageStyle,renrenId))
+		#init pwd to write
+		if os.path.exists(pwd)==False:
+			os.makedirs(pwd)	
+			self.log.debug("mkdir {}".format(pwd))
+
+		#request pages which not existe locally
+		for page in range(len(os.listdir(pwd)),uppage+1):
+			if(page==51):
+				self.log.info('processing {}, getting page{} of {}'.format(pageStyle,page,renrenId))
+			else:
+				self.log.debug('processing {}, getting page{} of {}'.format(pageStyle,page,renrenId))
+			#send request and decode response
+			#print(self.urlTmplt[pageStyle].format(page,renrenId))
+			rsp=self.opener.open(self.urlTmplt[pageStyle].format(page,renrenId))
+			self.log.debug("{} recieved , page={}, renrenId={}".format(pageStyle,page,renrenId))
+			htmlStr=rsp.read().decode('UTF-8','ignore')
+
+			items=re.compile(self.itemPtn[pageStyle]).findall(htmlStr)
+			if len(items) < 1:
+				#end of friend list page or permision denied
+				self.log.debug("all {} page of {} saved in {}".format(pageStyle,renrenId,pwd))
+				break
+			else:
+				f=open(pwd+'/'+self.filenameTmplt.format(pageStyle,renrenId,page),'w')
+				f.write(htmlStr)
+				f.close()
 
 	def login(self):
 		user=self.user;
