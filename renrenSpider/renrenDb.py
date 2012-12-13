@@ -8,9 +8,17 @@ class RenrenDb:
 	temp_profile='temp_profile'
 	def __init__(self):
 		pass
-		
+
 	def getConn(self,db='data_bang'):
-		return pymysql.connect(host='127.0.0.1', port=3306, user='root', passwd='******', db=db,charset='utf8')
+		return pymysql.connect(host='127.0.0.1', port=3306, user='root', passwd='Kunth123',db=db,charset='utf8')
+	def execute(self,sql=None):
+		conn=self.getConn()
+		cur=conn.cursor()
+		cur.execute(sql)
+		conn.commit()
+		cur.close()
+		conn.close()
+
 	def deleteRelation(col,renrenId,table='net_renren'):
 		conn=getConn()
 		cur=conn.cursor()
