@@ -15,8 +15,8 @@ class RenrenBrowser:
 		'friendList':"http://friend.renren.com/GetFriendList.do?curpage={}&id={}",
 		'profile':"http://www.renren.com/{}/profile?v=info_ajax"}
 	itemPtn={
-		'status':'id="status-',
-		'friendList':r'<a\shref=\"http://www.renren.com/profile.do\?id=\d+\">[^<]+<\/a>'}
+		'status':r'id="status-.+?ilike_icon',
+		'friendList':r'<dd><a\s+href=\"http://www.renren.com/profile.do\?id=\d+\">.+?<\/a>'}
 #'class="info"'}
 	filenameTmplt='{}_{}.html'#pageStyle, renrenId, page
 
@@ -78,6 +78,7 @@ class RenrenBrowser:
 	def iterPage(self,pageStyle=None,renrenId=None,uppage=100):
 		itemsAll=set()
 		self.log.debug('request {} of renrenId={}'.format(pageStyle,renrenId))
+		start=time.time()
 		for curpage in range(0,uppage+1):
 			#request one page
 			htmlStr=self.onePage(pageStyle,renrenId,curpage)
@@ -85,10 +86,11 @@ class RenrenBrowser:
 				self.log.error('{} page={} of renrenId={} empty'.format(pageStyle, curpage, renrenId))
 				continue
 			#judge whether to go on or not from number of itemsInPage
-			itemsInPage=re.compile(self.itemPtn[pageStyle]).findall(htmlStr)
+			itemsInPage=re.compile(self.itemPtn[pageStyle],re.DOTALL).findall(htmlStr)
 			#print(len(itemsInPage))
-			if len(itemsInPage) < 2:
-				self.log.info('{} of renrenId={} has {} pages, total items: {}'.format(pageStyle,renrenId,curpage-1, len(itemsAll)))
+			if len(itemsInPage) < 1:
+				stop=time.time()
+				self.log.info('{} of renrenId={} has {} pages, total items: {}, time cost: {}'.format(pageStyle,renrenId,curpage, len(itemsAll), stop-start))
 				break
 			else:
 				itemsAll=itemsAll | set(itemsInPage)
