@@ -1,87 +1,98 @@
 import urllib.request as http#instead of urllib2
 import urllib.parse #urlencode is used
 import http.cookiejar as cookie
+import socket
 import re
-import time
-import logging
 import os
+import logging
+import time
 
 import mytools #used to get passwd from personal mysql
 
 class RenrenBrowser:
-	pwdRoot='/home/jackon/renrenData'
-	pwdProfilePage=pwdRoot+'/profilePages'
-	pwdLog=pwdRoot+'/spider_log'
 	urlTmplt={
 		'status':'http://status.renren.com/status?curpage={}&id={}&__view=async-html',
-		'friendList':"http://friend.renren.com/GetFriendList.do?curpage={}&id={}"}
+		'friendList':"http://friend.renren.com/GetFriendList.do?curpage={}&id={}",
+		'profile':"http://www.renren.com/{}/profile?v=info_ajax"}
 	itemPtn={
 		'status':'id="status-',
-		'friendList':'class="info"'}
-	filenameTmplt='{}{}_{}.html'#pageStyle, renrenId, page
-	def __init__(self,user='jiekunyang@gmail.com'):
+		'friendList':r'<a\shref=\"http://www.renren.com/profile.do\?id=\d+\">[^<]+<\/a>'}
+#'class="info"'}
+	filenameTmplt='{}_{}.html'#pageStyle, renrenId, page
 
-		self.log=self.initLogger()
+	timeout=1.0
+	resend=3
+	def __init__(self,user='jiekunyang@gmail.com',path='.'):
+		self.pwdRoot=path+"/renrenData"
+		logPath=self.pwdRoot+'/spideLog'
+		self.log=self.interfaceLog('renrenBrowser',logPath)
 		#get passwd from mysql database, which is not necessary
 		self.user=user
 		self.passwd=mytools.getPasswd('renren',user)
+		socket.setdefaulttimeout(self.timeout)
+		#TODO:make traceId thread save.
+		self.traceId=10001#id of request and rsp.
 
-	def friendListPage(self,renrenId='285060168',uppage=100):
-		self.iterPage('friendList',renrenId,uppage)
-	def statusPage(self,renrenId=None,uppage=100):
-		self.iterPage('status',renrenId,uppage)
-	def profilePage(self,renrenId):
-		url_template="http://www.renren.com/{}/profile?v=info_ajax"
-		#sending request and decode response
-		self.log.debug("requesting detail profile, renrenId={}".format(renrenId))
-		rsp=self.opener.open(url_template.format(renrenId))
-		self.log.debug("detail profile recieved, renrenId={}".format(renrenId))
-		htmlStr=rsp.read().decode('UTF-8','ignore')
-		#init pwd to write
-		pwd=self.pwdProfilePage
-		if os.path.exists(pwd)==False:
-			os.makedirs(pwd)	
-			self.log.debug("mkdir {}".format(pwd))
-		#write to file
-		filenameTemplate='profile_{}.html'#id
-		filename=pwd+'/'+filenameTemplate.format(renrenId)
-		f=open(filename,'w')
-		f.write(htmlStr)
-		f.close()
-		self.log.debug("detail profile write to file, file={}".format(filename))
+	def friendList(self,renrenId='285060168',targetPage=None, uppage=100):
+		pageStyle='friendList'
+		if targetPage==None:
+			return self.iterPage(pageStyle,renrenId,uppage)
+		else:
+			self.log.info('request 1 {} page of renrenId={},curpage={}'.format(pageStyle,renrenId,targetPage))
+			return self.onePage(pageStyle,renrenId,targetPage)
+	def status(self,renrenId=None,targetPage=None, uppage=100):
+		pageStyle='status'
+		if targetPage==None:
+			return self.iterPage(pageStyle,renrenId,uppage)
+		else:
+			self.log.info('request 1 {} page of renrenId={},curpage={}'.format(pageStyle,renrenId,targetPage))
+			return self.onePage(pageStyle,renrenId,targetPage)
+	def profile(self,renrenId):
+		pageStyle='profile'
+		self.log.info('request {} of renrenId={}'.format(pageStyle,renrenId))
+		return self.onePage(pageStyle,renrenId)
 
-	def iterPage(self,pageStyle=None,renrenId=None,uppage=100):
-		pwd=self.pwdRoot+'/{}/{}'.format(pageStyle,renrenId)
-
-		#only useful page is writtern, no end+1 page, no permision denied page
-		self.log.info("start to get {} page of {}".format(pageStyle,renrenId))
-		#init pwd to write
-		if os.path.exists(pwd)==False:
-			os.makedirs(pwd)	
-			self.log.debug("mkdir {}".format(pwd))
-
-		#request pages which not existe locally
-		for page in range(len(os.listdir(pwd)),uppage+1):
-			if(page==51):
-				self.log.info('processing {}, getting page{} of {}'.format(pageStyle,page,renrenId))
-			else:
-				self.log.debug('processing {}, getting page{} of {}'.format(pageStyle,page,renrenId))
-			#send request and decode response
-			#print(self.urlTmplt[pageStyle].format(page,renrenId))
-			rsp=self.opener.open(self.urlTmplt[pageStyle].format(page,renrenId))
-			self.log.debug("{} recieved , page={}, renrenId={}".format(pageStyle,page,renrenId))
+	def onePage(self,pageStyle=None,renrenId=None,curpage=None):
+		traceId=self.traceId
+		self.traceId=self.traceId+1
+		#construct url, if page=None, no page parmater needed.
+		if curpage==None:
+			url=self.urlTmplt[pageStyle].format(renrenId)
+		else:
+			url=self.urlTmplt[pageStyle].format(curpage,renrenId)
+		#send request and decode response. auto resend 3 times, if time out.
+		try:
+			self.log.debug('request | success | traceId={}, url={}'.format(traceId,url))
+			onePageStartTime=time.time()
+			rsp=self.opener.open(url)
 			htmlStr=rsp.read().decode('UTF-8','ignore')
+			onePageStopTime=time.time()
+			self.log.debug('rsponse | success | traceId={}, timecost={}'.format(traceId,onePageStopTime-onePageStartTime))
+			#TODO: deal with auto output
+		except Exception as e:
+			self.log.warn('rsponse | time out | traceId={}, url={}'.format(traceId,url))
+			print("resend needed")
+			htmlStr='timeout'
 
-			items=re.compile(self.itemPtn[pageStyle]).findall(htmlStr)
-			if len(items) < 1:
-				#end of friend list page or permision denied
-				self.log.debug("all {} page of {} saved in {}".format(pageStyle,renrenId,pwd))
+		return htmlStr
+	def iterPage(self,pageStyle=None,renrenId=None,uppage=100):
+		itemsAll=set()
+		self.log.debug('request {} of renrenId={}'.format(pageStyle,renrenId))
+		for curpage in range(0,uppage+1):
+			#request one page
+			htmlStr=self.onePage(pageStyle,renrenId,curpage)
+			if htmlStr=='timeout':
+				self.log.error('{} page={} of renrenId={} empty'.format(pageStyle, curpage, renrenId))
+				continue
+			#judge whether to go on or not from number of itemsInPage
+			itemsInPage=re.compile(self.itemPtn[pageStyle]).findall(htmlStr)
+			#print(len(itemsInPage))
+			if len(itemsInPage) < 2:
+				self.log.info('{} of renrenId={} has {} pages, total items: {}'.format(pageStyle,renrenId,curpage-1, len(itemsAll)))
 				break
 			else:
-				f=open(pwd+'/'+self.filenameTmplt.format(pageStyle,renrenId,page),'w')
-				f.write(htmlStr)
-				f.close()
-
+				itemsAll=itemsAll | set(itemsInPage)
+		return itemsAll
 	def login(self):
 		user=self.user;
 		passwd=self.passwd
@@ -106,29 +117,38 @@ class RenrenBrowser:
 			name=re.compile(namePtn).findall(title[0])[0].strip('-<')
 			self.log.info("user login successfully,name={},email={}".format(name,user))
 			#return renrenId if login successful.
-			return '233330059'
+			renrenId='233330059'
 		except Exception as e:
+			#TODO:deal with type of exception. login error or time out.
+			#TODO:raise exception
 			self.log.error("user login failed,email={},msg={}".format(user,str(e)))
-			return '0'
+			renrenId='0'
+		return renrenId
 
-	def initLogger(self):
-		pwd=self.pwdLog
-
-		#init pwd to write
+	def interfaceLog(self,objName, pwdLog):
+		#init pwd and logfile name. 
+		pwd=pwdLog
 		if os.path.exists(pwd)==False:
-			os.makedirs(pwd)	
-		#init logfile name
-		date=time.strftime("%Y%m%d", time.localtime())
-		logfile=pwd+'/'+"renrenBrowser_{}.log".format(date)
+			os.makedirs(pwd)
+		logfile=pwd+'/'+objName+".log"
 		#init logger
-		logger=logging.getLogger()
+		logger=logging.getLogger('interface.{}'.format(objName))
 		hdlr=logging.FileHandler(logfile)
 		formatter=logging.Formatter('%(asctime)s | %(levelname)s | %(message)s')
 		hdlr.setFormatter(formatter)
 		logger.addHandler(hdlr)
-		logger.setLevel(20)#info
+		logger.setLevel(40)#20 info, 40 error
 		return logger
 	def setLogLevel(self,level):
-		oldLevel=self.log.getEffectiveLevel()
 		self.log.setLevel(level)#info 20, debug 10
-		self.log.info("log level chanaged, from {} to {}".format(oldLevel,level))
+
+	def savePage(self, pageStyle, htmlStr):
+		pwd=self.pwdRoot+'/{}'.format('pages')
+		if os.path.exists(pwd)==False:
+			os.makedirs(pwd)	
+			self.log.debug("mkdir {}".format(pwd))
+		timestamp=time.strftime("%Y%m%d%H%M%S", time.localtime())
+		f=open(pwd+'/'+self.filenameTmplt.format(pageStyle,timestamp),'w')
+		f.write(htmlStr)
+		f.close()
+		
