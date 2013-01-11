@@ -1,27 +1,26 @@
 import re
 import time
-import logging
 import os
 from renrenCache import *
 
 class RenrenParser:
 	def __init__(self,data):
 		self.data=data#RenrenCache()
-#		self.log=self.initLogger()
 
-	def friends(self,renrenId,items):
+	def friendList(self,renrenId,items):
 		friends=set()
 		names=dict()
+		ptn=re.compile(r'id=(\d+)">([^<]*?)</a>')
 		for item in items:
-			friendId=re.compile(r'=\d+\"').findall(item)[0].strip('="')
-			name=re.compile(r'\">.+?<').findall(item)[0].strip('"<>')
-			friends.add(friendId)
-			names[friendId]=name
+			try:
+				m=ptn.search(item)
+				friends.add(m.group(1))
+				names[m.group(1)]=m.group(2)
+			except Exception as e:
+				print('{} friendList parser error,item={}'.format(renrenId,item))
 		if len(items)==len(friends):
-			self.data.addItem('friends',renrenId,friends)
+			self.data.addItem('friendList',renrenId,friends)
 			self.data.addItems('name',names)
-		else:
-			print('{} friendList parser error'.format(renrenId))
 				#self.log.error(
 
 	def profile(self,renrenId,page):

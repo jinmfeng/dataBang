@@ -3,36 +3,46 @@ import os
 
 class RenrenCache:
 	dataFileTmplt="{}/{}.p"#path,attrName
-	def __init__(self,path='.'):
-		self.attrs={'friends':dict(),'name':dict()}
-		self.load()
+	def __init__(self,path='./renrenData/objs'):
+		self.path=path
+		self.data={'friendList':dict(),'name':dict()}
 	def __del__(self):
 		pass
 
-	def load(self,path='./renrenData/dict'):
-		for attr in self.attrs.keys():
+	def load(self,path=None):
+		if path==None:
+			path=self.path
+		for attr in self.data.keys():
 			try:
-				self.attrs[attr]=pickle.load(open(self.dataFileTmplt.format(path,attr),'rb'))
-				#print("{} ok".format(attr))#log
+				self.data[attr]=pickle.load(open(self.dataFileTmplt.format(path,attr),'rb'))
 			except Exception as e:
-				self.attrs[attr]={}
-				#print("{} fail".format(attr))#log
-	def save(self,path='./renrenData/dict'):
+				self.data[attr]=dict()#duplicate
+	def save(self,path=None):
+		if path==None:
+			path=self.path
 		if os.path.exists(path)==False:
 			os.makedirs(path)
-		#self.attrsFile=path+'/attrs.p'
-		#pickle.dump(self.attrs,open(self.attrsFile,'wb'))
-		for item in self.attrs.items():
+		for item in self.data.items():
 			pickle.dump(item[1],open(self.dataFileTmplt.format(path,item[0]),'wb'))
 
 	def out(self):
-		print('attrs list: {}'.format(self.attrs.keys()))
-		for item in self.attrs.values():
-			print('{}:{}'.format(item[0],item[1]))
+		print('attrs list: {}'.format(self.data.keys()))
+		for item in self.data.items():
+			#print('{}:{}'.format(item[0],item[1]))
+			print('{}:{} items'.format(item[0],len(item[1])))
 
 	def addItem(self,attr,renrenId,value):
 		#override
-		self.attrs[attr][renrenId]=value
+		self.data[attr][renrenId]=value
 	def addItems(self,attr,keyValue):
 		#override
-		self.attrs[attr].update(keyValue)
+		self.data[attr].update(keyValue)
+
+	def getValue(self,attr,renrenId):
+		return self.data[attr][renrenId]
+	def getAttrData(self,attr):
+		return self.data[attr]
+
+	def clear(self):
+		for attr in self.data.keys():
+			self.data[attr]=dict()
