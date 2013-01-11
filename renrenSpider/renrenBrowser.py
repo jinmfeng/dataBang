@@ -6,6 +6,7 @@ import re
 import os
 import logging
 import time
+import uuid
 
 import mytools #used to get passwd from personal mysql
 
@@ -14,14 +15,13 @@ class RenrenBrowser:
 		'status':'http://status.renren.com/status?curpage={}&id={}&__view=async-html',
 		'friendList':"http://friend.renren.com/GetFriendList.do?curpage={}&id={}",
 		'profile':"http://www.renren.com/{}/profile?v=info_ajax"}
-	itemPtn={
+	itemReg={
 		'status':r'id="status-.+?ilike_icon',
-		'friendList':r'<dd><a\s+href=\"http://www.renren.com/profile.do\?id=\d+\">.+?<\/a>'}
-#'class="info"'}
-	filenameTmplt='{}_{}.html'#pageStyle, renrenId, page
+		'friendList':re.compile(r'<dd><a\s+href=\"http://www.renren.com/profile.do\?id=\d+\">.+?<\/a>')}
 
-	timeout=1.0
+	timeout=2.0
 	resend=3
+
 	def __init__(self,user='jiekunyang@gmail.com',path='.'):
 		self.pwdRoot=path+"/renrenData"
 		logPath=self.pwdRoot+'/spideLog'
@@ -30,8 +30,7 @@ class RenrenBrowser:
 		self.user=user
 		self.passwd=mytools.getPasswd('renren',user)
 		socket.setdefaulttimeout(self.timeout)
-		#TODO:make traceId thread save.
-		self.traceId=10001#id of request and rsp.
+		self.autoSave=False
 
 	def friendList(self,renrenId='285060168',targetPage=None, uppage=100):
 		pageStyle='friendList'
@@ -53,8 +52,7 @@ class RenrenBrowser:
 		return self.onePage(pageStyle,renrenId)
 
 	def onePage(self,pageStyle=None,renrenId=None,curpage=None):
-		traceId=self.traceId
-		self.traceId=self.traceId+1
+		traceId=uuid.uuid1()
 		#construct url, if page=None, no page parmater needed.
 		if curpage==None:
 			url=self.urlTmplt[pageStyle].format(renrenId)
@@ -62,18 +60,21 @@ class RenrenBrowser:
 			url=self.urlTmplt[pageStyle].format(curpage,renrenId)
 		#send request and decode response. auto resend 3 times, if time out.
 		try:
-			self.log.debug('request | success | traceId={}, url={}'.format(traceId,url))
-			onePageStartTime=time.time()
+			self.log.debug('request | success | url={}, traceId={} '.format(url,traceId))
+			startTime=time.time()
 			rsp=self.opener.open(url)
 			htmlStr=rsp.read().decode('UTF-8','ignore')
-			onePageStopTime=time.time()
-			self.log.debug('rsponse | success | traceId={}, timecost={}'.format(traceId,onePageStopTime-onePageStartTime))
-			#TODO: deal with auto output
+			stopTime=time.time()
+			self.log.debug('rsponse | success | timecost={}, traceId={} '.format(stopTime-startTime,traceId))
 		except Exception as e:
-			self.log.warn('rsponse | time out | traceId={}, url={}'.format(traceId,url))
-			print("resend needed")
+			self.log.error('rsponse | time out | url={}, traceId={} '.format(url,traceId))
+		#TODO: deal with resend
 			htmlStr='timeout'
 
+		#local storage if needed
+		if self.autoSave:
+			filename='{}{}_{}.html'.format(pageStyle, renrenId, curpage)
+			self.savePage(filename,htmlStr)
 		return htmlStr
 	def iterPage(self,pageStyle=None,renrenId=None,uppage=100):
 		itemsAll=set()
@@ -82,13 +83,11 @@ class RenrenBrowser:
 		for curpage in range(0,uppage+1):
 			#request one page
 			htmlStr=self.onePage(pageStyle,renrenId,curpage)
-			if htmlStr=='timeout':
-				self.log.error('{} page={} of renrenId={} empty'.format(pageStyle, curpage, renrenId))
-				continue
-			#judge whether to go on or not from number of itemsInPage
-			itemsInPage=re.compile(self.itemPtn[pageStyle],re.DOTALL).findall(htmlStr)
-			#print(len(itemsInPage))
-			if len(itemsInPage) < 1:
+			#if timeout, pass
+			if htmlStr=='timeout':continue
+			#judge whether to go on or not
+			itemsInPage=self.itemReg[pageStyle].findall(htmlStr)
+			if len(itemsInPage) < 1:#all pages request
 				stop=time.time()
 				self.log.info('{} of renrenId={} has {} pages, total items: {}, time cost: {}'.format(pageStyle,renrenId,curpage, len(itemsAll), stop-start))
 				break
@@ -144,13 +143,16 @@ class RenrenBrowser:
 	def setLogLevel(self,level):
 		self.log.setLevel(level)#info 20, debug 10
 
-	def savePage(self, pageStyle, htmlStr):
-		pwd=self.pwdRoot+'/{}'.format('pages')
+	def savePage(self, filename, htmlStr, path=None):
+		if path==None:
+			pwd=self.pwdRoot+'/pages'
+		else:
+			pwd=path
 		if os.path.exists(pwd)==False:
-			os.makedirs(pwd)	
+			os.makedirs(pwd)
 			self.log.debug("mkdir {}".format(pwd))
-		timestamp=time.strftime("%Y%m%d%H%M%S", time.localtime())
-		f=open(pwd+'/'+self.filenameTmplt.format(pageStyle,timestamp),'w')
+		f=open(pwd+'/'+filename,'w')
 		f.write(htmlStr)
 		f.close()
-		
+	def localSave(self,flag):
+		self.autoSave=flag
