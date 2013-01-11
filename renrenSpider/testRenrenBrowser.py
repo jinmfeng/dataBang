@@ -36,11 +36,7 @@ class TestRenrenBrowser(unittest.TestCase):
 		self.assertEqual(len(os.listdir(self.pwdSave)),len(renrenIds))
 
 	def testFriendList(self):
-		#page style: ok/unavailable
-		#number of total pages: 0,1,more
-		#curpage of curpage requesting
-
-#target 1 page and check htmlStr not 'timeout'
+		#target 1 page and check htmlStr not 'timeout'
 		renrenIds={'233330059','410941086','267654044','285060168','240303471'}
 							#myself,3+pages/2pages/1page/unavailable
 		self.browser.setLogLevel(10)#debug
