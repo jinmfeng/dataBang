@@ -5,7 +5,8 @@ class RenrenCache:
 	dataFileTmplt="{}/{}.p"#path,attrName
 	def __init__(self,path='./renrenData/objs'):
 		self.path=path
-		self.data={'friendList':dict(),'name':dict()}
+		self.data=dict()
+		self.initAttr()
 	def __del__(self):
 		pass
 
@@ -33,9 +34,13 @@ class RenrenCache:
 
 	def addItem(self,attr,renrenId,value):
 		#override
+		if attr not in self.data.keys():
+			self.addAttr(attr)
 		self.data[attr][renrenId]=value
 	def addItems(self,attr,keyValue):
 		#override
+		if attr not in self.data.keys():
+			self.addAttr(attr)
 		self.data[attr].update(keyValue)
 
 	def getValue(self,attr,renrenId):
@@ -43,6 +48,19 @@ class RenrenCache:
 	def getAttrData(self,attr):
 		return self.data[attr]
 
-	def clear(self):
-		for attr in self.data.keys():
+	def initAttr(self,attrs={'friendList','name'}):
+		self.clear()
+		if type(attrs)!=type(set()):
+			print('input error, expect: type(attrs)=set()')
+		for attr in attrs:
 			self.data[attr]=dict()
+	def addAttr(self,attr):
+		if attr not in self.data.keys():
+			self.data[attr]=dict()
+	def getAttrs(self):
+		return set(self.data.keys())
+
+	def clear(self):
+		self.data=dict()
+		#for attr in self.data.keys():
+			#self.data[attr]=dict()
