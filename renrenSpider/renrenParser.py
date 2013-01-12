@@ -12,30 +12,24 @@ class RenrenParser:
 		for item in items:
 			m=ptn.search(item)
 			if m == None:#parse error, return
-				return item
+				return -1 
 			name[m.group(1)]=m.group(2)
 		return name
-
-	def profile(self,renrenId,page):
+	def profile(self,page):
 		#parser out all <dt>tag</dt>\W*?<dd>value</dd>
 		itemPtn=r'<dt>[^<]*?</dt>[^<]*?<dd>.*?</dd>'
 		items=re.compile(itemPtn,re.DOTALL).findall(page)
 		ptn=re.compile(r'<dt>(.*?)</dt>[^<]*?<dd>(.*?)</dd>',re.DOTALL)
+		profile=dict()
 		for item in items:
 			pair=ptn.search(item)
-			try:
-				tag=pair.group(1).strip('\n')
-				value=pair.group(2).strip('\n')
-				#drop useless info in value
-				value=re.sub(r'<a\s[^>]+?>([^<]*?)</a>',r'\1',value)#drop superlink
-				value=re.sub(r'(?:&nbsp;)|(?:\"\+response\.[a-z]+\+\")|\s+',r'',value)
-				tag=re.sub(r'\s+',r'',tag)
-				#print(tag,value)
-				#add to cache
-				if (tag.find('生日')!=-1) and (value.find('座')!=-1):#.encode('UTF-8'):
-					#drop data, continue
-					continue
-				else:
-					self.data.addItem(tag,renrenId,value)
-			except Exception as e:
-				print(item)
+			if pair.group(1).find('所在')==0:continue #duplicated info
+			if pair.group(2).find('pf_birth')!=-1:continue #duplicated item, drop
+			value=re.sub(r'<a\s[^>]+?>([^<]*?)</a>',r'\1',pair.group(2))#drop link
+			value=re.sub(r'(?:&nbsp;)|(?:\"\+response\.[a-z]+\+\")|\s+',r'',value)
+			if value=='':
+				continue
+			else:
+				tag=re.sub(r'\s+|:',r'',pair.group(1))
+				profile[tag]=value
+		return profile
