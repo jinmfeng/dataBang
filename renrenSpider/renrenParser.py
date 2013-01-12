@@ -1,27 +1,20 @@
 import re
 import time
 import os
-from renrenCache import *
 
 class RenrenParser:
-	def __init__(self,data):
-		self.data=data#RenrenCache()
+	def __init__(self):
+		pass
 
-	def friendList(self,renrenId,items):
-		friends=set()
-		names=dict()
+	def friendList(self,items):
+		name=dict()
 		ptn=re.compile(r'id=(\d+)">([^<]*?)</a>')
 		for item in items:
-			try:
-				m=ptn.search(item)
-				friends.add(m.group(1))
-				names[m.group(1)]=m.group(2)
-			except Exception as e:
-				print('{} friendList parser error,item={}'.format(renrenId,item))
-		if len(items)==len(friends):
-			self.data.addItem('friendList',renrenId,friends)
-			self.data.addItems('name',names)
-				#self.log.error(
+			m=ptn.search(item)
+			if m == None:#parse error, return
+				return item
+			name[m.group(1)]=m.group(2)
+		return name
 
 	def profile(self,renrenId,page):
 		#parser out all <dt>tag</dt>\W*?<dd>value</dd>
