@@ -25,19 +25,24 @@ class RenrenParser:
 
 	def profile(self,renrenId,page):
 		#parser out all <dt>tag</dt>\W*?<dd>value</dd>
-		itemPtn=r'<dt>[^<]*?</dt>\W?<dd>.*?</dd>'
+		itemPtn=r'<dt>[^<]*?</dt>[^<]*?<dd>.*?</dd>'
 		items=re.compile(itemPtn,re.DOTALL).findall(page)
-
-		ptn=re.compile(r'<dt>([^<]*?)</dt>\W?<dd>(.*?)</dd>',re.DOTALL)
-
-		print('||||||||||||||||||||||||||||||||||||||')
+		ptn=re.compile(r'<dt>(.*?)</dt>[^<]*?<dd>(.*?)</dd>',re.DOTALL)
 		for item in items:
-			#print("-------------\n{}".format(item))
-			pair=ptn.match(item)
-			tag=pair.group(1).strip(' \n')
-			value=pair.group(2).strip(' \n')
-			#drop useless info in value
-			value=re.sub(r'<a\s[^>]+?>([^<]*?)</a>',r'\1',value)#drop superlink
-			value=re.sub(r'(?:&nbsp;)|(?:\"\+response\.[a-z]+\+\")|\s+|\n+',r'',value)#drop \s,\n, non content string
-			print("------------------\n{}{}".format(tag,value))
-			#add to cache
+			pair=ptn.search(item)
+			try:
+				tag=pair.group(1).strip('\n')
+				value=pair.group(2).strip('\n')
+				#drop useless info in value
+				value=re.sub(r'<a\s[^>]+?>([^<]*?)</a>',r'\1',value)#drop superlink
+				value=re.sub(r'(?:&nbsp;)|(?:\"\+response\.[a-z]+\+\")|\s+',r'',value)
+				tag=re.sub(r'\s+',r'',tag)
+				#print(tag,value)
+				#add to cache
+				if (tag.find('生日')!=-1) and (value.find('座')!=-1):#.encode('UTF-8'):
+					#drop data, continue
+					continue
+				else:
+					self.data.addItem(tag,renrenId,value)
+			except Exception as e:
+				print(item)
