@@ -4,9 +4,16 @@ class RenrenDb:
 	
 	renren_relation='t_renren_relation'
 	temp_relation='temp_relation'
-	renren_profile='t_renren_profile'
-	temp_profile='temp_profile'
+	renren_detail_profile='t_renren_detail_profile'
+	temp_detail_profile='temp_detail_profile'
+	renren_name='t_renren_name'
+	temp_name='temp_name'
+
+	detailCol={'生日':'birth','星座':'star','家乡':'hometown','等级':'rrlvl','性别':'gender','大学':'school_college','高中':'school_senior','中专技校':'school_tech','初中':'school_junior','小学':'school_primary','公司':'company','时间':'time','QQ':'qq','MSN':'msn','手机号':'phone','个人网站':'personal_website','我的域名':'domain1','个性域名':'domain2'}
 	def __init__(self):
+		pass
+
+	def createTable(self):
 		pass
 
 	def getConn(self,db='data_bang'):
@@ -58,7 +65,7 @@ class RenrenDb:
 		cur=conn.cursor()
 
 		name=''
-		for table in [self.renren_profile,self.temp_profile]:
+		for table in [self.renren_name,self.temp_name]:
 			n=cur.execute('select name from {} where renrenId={}'.format(table,renrenId))
 			if n>0:
 				name=cur.fetchall()[0][0]
@@ -70,7 +77,7 @@ class RenrenDb:
 		cur=conn.cursor()
 
 		names=dict()
-		for table in [self.renren_profile,self.temp_profile]:
+		for table in [self.renren_name,self.temp_name]:
 			cur.execute('select renrenId,name from {} where renrenId in ({})'.format(table,str(renrenIds).strip('[]{}')))
 			for item in cur.fetchall():
 				names[item[0]]=item[1]
@@ -88,3 +95,20 @@ class RenrenDb:
 		cur.close()
 		conn.close()
 		return edge
+
+	def insertFriendList(self,renrenId,friendList):
+		#construct sql, insert into table (col1, col2) values (v11,v12),(v21,v22)
+		sql='insert into '+self.temp_relation+' (renrenId1,renrenId2) values '
+		for friend in friendList:
+			sql=sql+'({},{}),'.format(renrenId,friend)
+		self.execute(sql.rstrip(','))
+	def insertName(self,name):
+		sql='insert into '+self.temp_name+' (renrenId,name) values '
+		for item in name.items():
+			sql=sql+str(item)+','
+		self.execute(sql.rstrip(','))
+	def insertProfile(self,renrenId,profile):
+		sql='insert into '+self.temp_detail_profile+' set '
+		for item in profile.items():
+			sql=sql+self.detailCol[item[0]]+"='"+item[1]+"',"
+		self.execute(sql.rstrip(','))
