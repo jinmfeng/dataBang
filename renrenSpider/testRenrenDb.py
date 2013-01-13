@@ -1,15 +1,18 @@
 import unittest
-
 from renrenDb import *
-from renrenParser import *
 
 class TestRenrenDb(unittest.TestCase):
 
 	def setUp(self):
 		self.db=RenrenDb()
+		self.db.dropTempTable()
+		self.db.dropMainTable()
+		self.db.createTempTable()#not exists
+		self.db.createMainTable()#not exists
 
 	def tearDown(self):
-#		self.browser.dispose()
+		self.db.dropTempTable()
+		self.db.dropMainTable()
 		self.db=None
 
 	def testInsertFriendList(self):
@@ -24,10 +27,30 @@ class TestRenrenDb(unittest.TestCase):
 		for (renrenId,profile) in zip(renrenIds,profiles):
 			self.db.insertProfile(renrenId,profile)
 
+	def testGetRenrenId(self):
+		#renrenIds=['1111111','222222','33333333']
+		renrenId='100032076'
+		print(self.db.getRenrenId(2,renrenId))
+
+	def testTableManage(self):
+		self.db.dropTempTable()
+		self.db.createTempTable()#not exists
+		self.db.createTempTable()#exists
+		self.db.dropTempTable()#exists
+		self.db.dropTempTable()#not exists
+
+		self.db.dropMainTable()
+		self.db.createMainTable()#not exists
+		self.db.createMainTable()#exists
+		self.db.dropMainTable()#exists
+		self.db.dropMainTable()#not exists
+
 if __name__=='__main__':
 	suite=unittest.TestSuite()
 	suite.addTest(TestRenrenDb('testInsertFriendList'))
 	suite.addTest(TestRenrenDb('testInsertName'))
 	suite.addTest(TestRenrenDb('testInsertProfile'))
+	suite.addTest(TestRenrenDb('testTableManage'))
+	#suite.addTest(TestRenrenDb('testGetRenrenId'))
 	runner=unittest.TextTestRunner()
 	runner.run(suite)
