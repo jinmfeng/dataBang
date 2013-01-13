@@ -108,7 +108,7 @@ class RenrenDb:
 			sql=sql+str(item)+','
 		self.execute(sql.rstrip(','))
 	def insertProfile(self,renrenId,profile):
-		sql='insert into '+self.temp_detail_profile+' set '
+		sql='insert into '+self.temp_detail_profile+' set renrenId={},'.format(renrenId)
 		for item in profile.items():
 			sql=sql+self.detailCol[item[0]]+"='"+item[1]+"',"
 		self.execute(sql.rstrip(','))
