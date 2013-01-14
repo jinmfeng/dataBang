@@ -81,7 +81,7 @@ class RenrenBrowser:
 		itemsAll=set()
 		self.log.debug('request {} of renrenId={}'.format(pageStyle,renrenId))
 		start=time.time()
-		for curpage in range(0,uppage+1):
+		for curpage in range(uppage+1):
 			#request one page
 			htmlStr=self.onePage(pageStyle,renrenId,curpage)
 			#if timeout, pass
