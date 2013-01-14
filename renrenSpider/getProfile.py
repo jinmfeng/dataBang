@@ -9,7 +9,6 @@ class RenrenProfile():
 		self.db=renrenDb.RenrenDb(tablePre)
 		self.browser=renrenBrowser.RenrenBrowser()
 		self.browser.setLogLevel(20)
-		self.browser.login()
 		
 		self.searched=self.db.getSearched('profile')
 
@@ -19,15 +18,14 @@ class RenrenProfile():
 		cnt=0
 		for renrenId in toSearch:
 			pf=self.parser.profile(self.browser.profile(renrenId))
-			self.db.insertProfile(renrenId,pf)
-			cnt += 1
-			if pf!=dict():
+			if pf['private']==0:
+				cnt += 1
+				self.db.insertProfile(renrenId,pf)
 				print(cnt)
-				time.sleep(10)
+				time.sleep(3)
 			else:
-				print('empty')
+				print('renrenId={}, type={}'.format(renrenId,pf['private']))
 
 if __name__=='__main__':
 	pf=RenrenProfile()
 	pf.get('233330059')
-	
