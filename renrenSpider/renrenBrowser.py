@@ -1,3 +1,4 @@
+#download resources from www.renren.com.
 import urllib.request as http#instead of urllib2
 import urllib.parse #urlencode is used
 import http.cookiejar as cookie
@@ -19,7 +20,7 @@ class RenrenBrowser:
 		'status':r'id="status-.+?ilike_icon',
 		'friendList':re.compile(r'<dd><a\s+href=\"http://www.renren.com/profile.do\?id=\d+\">.+?<\/a>')}
 
-	timeout=2.0
+	timeout=20.0
 	resend=3
 
 	def __init__(self,user='jiekunyang@gmail.com',path='.'):
@@ -27,8 +28,8 @@ class RenrenBrowser:
 		logPath=self.pwdRoot+'/spideLog'
 		self.log=self.interfaceLog('renrenBrowser',logPath)
 		#get passwd from mysql database, which is not necessary
-		self.user=user
-		self.passwd=mytools.getPasswd('renren',user)
+		passwd=mytools.getPasswd('renren',user)
+		self.login(user,passwd)
 		socket.setdefaulttimeout(self.timeout)
 		self.autoSave=False
 
@@ -94,9 +95,7 @@ class RenrenBrowser:
 			else:
 				itemsAll=itemsAll | set(itemsInPage)
 		return itemsAll
-	def login(self):
-		user=self.user;
-		passwd=self.passwd
+	def login(self,user,passwd):
 		login_page = "http://www.renren.com/PLogin.do"
 		try:
 			#construct http request

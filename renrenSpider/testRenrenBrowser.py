@@ -13,7 +13,7 @@ class TestRenrenBrowser(unittest.TestCase):
 			shutil.rmtree(self.pwdSave)
 
 		self.browser=RenrenBrowser(path=self.pwdRoot)
-		self.browser.login()
+		#self.browser.login()
 
 	def tearDown(self):
 #		self.browser.dispose()
@@ -53,7 +53,7 @@ class TestRenrenBrowser(unittest.TestCase):
 			self.assertEqual(len(os.listdir(self.pwdSave)),len(renrenIds)*(targetPage+1))
 
 		#target all pages and check len(set)
-		flist={'232639310':35,'242543024':152,'285060168':4}
+		flist={'232639310':35,'242543024':152,'285060168':5}
 		for item in flist.items():
 			self.assertEqual(len(self.browser.friendList(item[0])),item[1])
 
