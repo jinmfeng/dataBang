@@ -1,7 +1,7 @@
 renrenSpider
 ========
 collect data by simulating request of browser and parser response.
-parser and save datas in mysql.
+save datas in mysql.
 
 multi-thread is available to enhance speed.
 
