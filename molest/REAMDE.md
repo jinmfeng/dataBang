@@ -1,4 +1,4 @@
-molest renren and catch basic info
+molest
 =====
 
 1. login
