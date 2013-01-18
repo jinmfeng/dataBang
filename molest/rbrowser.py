@@ -64,17 +64,20 @@ def friendList(rid):
 
 if __name__=='__main__':
 	login()
-	nThread=1
+	nThread=10
 	tp=ThreadPool(nThread)
 	start=time.time()
-	for i in range(10):
+	for i in range(1):
 		tp.add_job(friendList,'230760442')#wei
 		tp.add_job(friendList,'250068531')#ju
-		tp.add_job(friendList,'242934804')#wei
-		tp.add_job(friendList,'233960464')#wei
+		#tp.add_job(friendList,'242934804')#wei
+		#tp.add_job(friendList,'233960464')#wei
 	#tp.add_job(friendList,'287286312')
 	#tp.add_job(friendList,'240303471')
 	tstop=time.time()
 	tp.wait_for_complete()
 	stop=time.time()
-	print(stop-start)
+	res=tp.get_res(friendList)
+	for key,meth_res in res.items():
+		print('{} has {} items'.format(key,len(meth_res[0])))
+	print("{} items,timecost={}".format(len(res.keys()),stop-start))

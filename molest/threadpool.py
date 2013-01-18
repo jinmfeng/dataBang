@@ -30,7 +30,7 @@ class MyThread(threading.Thread):
 				#print('{} running, job={}, parameters={}'.format(self.getName(),callable,args))
 				res = callable(*args)
 				#self.resultQueue.put( (res,self.getName()) )
-				self.resultQueue.put( (res,callable) )
+				self.resultQueue.put( (res,callable,args) )
 			except queue.Empty:
 				break
 
@@ -51,11 +51,16 @@ class ThreadPool:
 				thread.join()
 	def add_job(self, callable, *args):
 		self.workQueue.put( (callable,args) )
-	def get_res(self,callable):
+
+	def get_res(self,meth_name):
 		self.wait_for_complete()
-		res=set()
-		met_res,met_name=self.resultQueue.get(timeout=2)
-		if met_name is callable:
-			res.add(res)
+		res=dict()
+		while True:
+			try:
+				job_res,job_name,job_args=self.resultQueue.get(timeout=2)
+				if job_name is meth_name:
+					res[job_args]=job_res
+			except queue.Empty:
+				break
 		return res
 
